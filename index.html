@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab. Enrique Alvarez 2026. DGETI-CETIS 43</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8; /* Color de fondo donde nadará la lamprea */
+            color: #2c3e50;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none; 
+            overflow-x: hidden; 
+        }
+
+        /* --- CABECERA --- */
+        .header-titles { text-align: center; margin-bottom: 25px; z-index: 2; position: relative; }
+        .header-titles h1 { color: #1a365d; margin: 0 0 5px 0; font-size: 28px; }
+        .header-titles h2 { color: #4a5568; margin: 0 0 5px 0; font-size: 20px; }
+        .header-titles p { color: #718096; margin: 0; font-style: italic; }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            max-width: 1100px;
+            width: 100%;
+            justify-content: center;
+            z-index: 2;
+            position: relative;
+        }
+
+        /* Panel Izquierdo: Matriz y Taxones */
+        .panel-left {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 350px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: center; transition: background-color 0.3s; }
+        th { background-color: #edf2f7; font-weight: bold; }
+        .highlight-cell { background-color: #fefcbf; font-weight: bold; transform: scale(1.05); }
+
+        .taxones-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            min-height: 100px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 2px dashed #cbd5e0;
+            justify-content: center;
+        }
+        .taxon {
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border: 2px solid #4299e1;
+            color: #2b6cb0;
+            border-radius: 20px;
+            cursor: grab;
+            user-select: none;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px rgba(66, 153, 225, 0.2);
+            transition: all 0.2s;
+        }
+        .taxon:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 10px rgba(66, 153, 225, 0.3);
+            background-color: #ebf8ff;
+        }
+        .taxon:active { cursor: grabbing; transform: scale(0.95); }
+        .taxon-icon { font-size: 1.5em; display: inline-block; }
+
+        /* Panel Derecho: Árbol */
+        .tree-panel {
+            position: relative;
+            width: 650px;
+            height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .drop-zone {
+            position: absolute;
+            width: 140px;
+            height: 45px;
+            border: 2px dashed #a0aec0;
+            background: #f7fafc;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #718096;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        .drop-zone.over { background: #ebf8ff; border-color: #3182ce; transform: scale(1.1); }
+        .drop-zone.correct { border: 2px solid #48bb78; background: #f0fff4; }
+
+        /* Posiciones exactas */
+        #node1 { top: 40px; left: 30px; }  
+        #node2 { top: 40px; left: 160px; } 
+        #node3 { top: 40px; left: 290px; } 
+        #node4 { top: 40px; left: 420px; } 
+        #node5 { top: 40px; left: 550px; } 
+
+        /* Marcas en el árbol */
+        .trait-mark {
+            position: absolute;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            opacity: 0.4;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 5;
+        }
+        .trait-mark.active { opacity: 1; transform: scale(1.2); color: white; }
+        #mark-mandibulas { top: 380px; left: 280px; color: #d53f8c; border: 2px solid #d53f8c; }
+        #mark-mandibulas.active { background: #d53f8c; }
+        #mark-pulmones { top: 290px; left: 360px; color: #38a169; border: 2px solid #38a169; }
+        #mark-pulmones.active { background: #38a169; }
+        #mark-molleja { top: 200px; left: 440px; color: #805ad5; border: 2px solid #805ad5; }
+        #mark-molleja.active { background: #805ad5; }
+
+        /* Toast para mensajes y pistas */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3748;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+        .success-bg { background-color: #38a169 !important; border: 2px solid #2f855a; }
+        .error-bg { background-color: #e53e3e !important; border: 2px solid #c53030; }
+        
+        .toast-close {
+            cursor: pointer;
+            font-size: 18px;
+            color: rgba(255,255,255,0.7);
+            pointer-events: auto;
+        }
+        .toast-close:hover { color: white; }
+
+        /* --- ANIMACIÓN DE CONFETI --- */
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* --- LAMPREA PATRULLERA VERTICAL --- */
+        @keyframes swim-vertical {
+            0% { top: 100vh; transform: rotate(-70deg); } 
+            45% { top: -400px; transform: rotate(-70deg); } 
+            50% { top: -400px; transform: scaleX(-1) rotate(-110deg); } 
+            95% { top: 100vh; transform: scaleX(-1) rotate(-110deg); } 
+            100% { top: 100vh; transform: rotate(-70deg); } 
+        }
+        
+        #giant-lamprea {
+            position: fixed;
+            right: 20px; 
+            top: 100vh; 
+            width: 350px; 
+            z-index: -1; /* MAGIA AQUÍ: La mandamos al fondo absoluto detrás de la mesa */
+            pointer-events: none; 
+            animation: swim-vertical 25s linear infinite; 
+            opacity: 0.6; /* Un poco tenue para que parezca marca de agua */
+            mix-blend-mode: darken; /* Esta propiedad ahora sí borra el blanco contra el gris del fondo */
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- IMAGEN LOCAL EN LA MISMA CARPETA -->
+    <img id="giant-lamprea" src="lamprea.png" alt="Lamprea animada">
+
+    <!-- CABECERA INSTITUCIONAL -->
+    <div class="header-titles">
+        <h1>Lab. Enrique Alvarez 2026</h1>
+        <h2>DGETI-CETIS 43. Xochitepec</h2>
+        <p>Simulador de Sistemática y Construcción de Árboles Filogenéticos</p>
+    </div>
+    
+    <div class="container">
+        <div class="panel-left">
+            <div class="panel">
+                <h3 style="margin-top: 0;">Matriz de Caracteres</h3>
+                <table>
+                    <tr>
+                        <th>Taxón</th>
+                        <th class="col-mandibulas">Mandíbulas</th>
+                        <th class="col-pulmones">Pulmones</th>
+                        <th class="col-molleja">Molleja</th>
+                    </tr>
+                    <tr id="row-lamprea"><td>Lamprea</td><td>-</td><td>-</td><td>-</td></tr>
+                    <tr id="row-robalo"><td>Róbalo</td><td class="cell-mandibulas">+</td><td>-</td><td>-</td></tr>
+                    <tr id="row-antilope"><td>Antílope</td><td class="cell-mandibulas">+</td><td class="cell-pulmones">+</td><td>-</td></tr>
+                    <tr id="row-aguila"><td>Águila calva</td><td class="cell-mandibulas">+</td><td class="cell-pulmones">+</td><td class="cell-molleja">+</td></tr>
+                    <tr id="row-caiman"><td>Caimán</td><td class="cell-mandibulas">+</td><td class="cell-pulmones">+</td><td class="cell-molleja">+</td></tr>
+                </table>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin-top: 0;">Organismos (Arrastrar)</h3>
+                <div class="taxones-container" id="source-container">
+                    <div class="taxon" draggable="true" id="tax-lamprea" data-traits="none" data-row="row-lamprea">
+                        <span class="taxon-icon">🪱</span> Lamprea
+                    </div>
+                    <div class="taxon" draggable="true" id="tax-robalo" data-traits="mandibulas" data-row="row-robalo">
+                        <span class="taxon-icon">🐟</span> Róbalo
+                    </div>
+                    <div class="taxon" draggable="true" id="tax-antilope" data-traits="mandibulas,pulmones" data-row="row-antilope">
+                        <span class="taxon-icon">🦌</span> Antílope
+                    </div>
+                    <div class="taxon" draggable="true" id="tax-aguila" data-traits="mandibulas,pulmones,molleja" data-row="row-aguila" data-clade="archosauria">
+                        <span class="taxon-icon">🦅</span> Águila
+                    </div>
+                    <div class="taxon" draggable="true" id="tax-caiman" data-traits="mandibulas,pulmones,molleja" data-row="row-caiman" data-clade="archosauria">
+                        <span class="taxon-icon">🐊</span> Caimán
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tree-panel">
+            <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0; pointer-events: none;">
+                <style> .line { stroke: #cbd5e0; stroke-width: 6; stroke-linecap: round; transition: stroke 0.3s; } </style>
+                <line x1="200" y1="460" x2="620" y2="90" class="line" />
+                <line x1="260" y1="407" x2="100" y2="90" class="line" />  
+                <line x1="350" y1="327" x2="230" y2="90" class="line" /> 
+                <line x1="440" y1="247" x2="360" y2="90" class="line" /> 
+                <line x1="530" y1="168" x2="490" y2="90" class="line" /> 
+                
+                <line x1="330" y1="365" x2="350" y2="335" stroke="#d53f8c" stroke-width="6" stroke-linecap="round" />
+                <line x1="420" y1="285" x2="440" y2="255" stroke="#38a169" stroke-width="6" stroke-linecap="round" />
+                <line x1="510" y1="205" x2="530" y2="175" stroke="#805ad5" stroke-width="6" stroke-linecap="round" />
+            </svg>
+
+            <div class="drop-zone" id="node1" data-expected="tax-lamprea">Vacío</div>
+            <div class="drop-zone" id="node2" data-expected="tax-robalo">Vacío</div>
+            <div class="drop-zone" id="node3" data-expected="tax-antilope">Vacío</div>
+            <div class="drop-zone" id="node4" data-expected="archosauria">Vacío</div>
+            <div class="drop-zone" id="node5" data-expected="archosauria">Vacío</div>
+
+            <div class="trait-mark" id="mark-mandibulas">Mandíbulas</div>
+            <div class="trait-mark" id="mark-pulmones">Pulmones</div>
+            <div class="trait-mark" id="mark-molleja">Molleja</div>
+        </div>
+    </div>
+
+    <!-- Toast de Notificaciones -->
+    <div id="toast">
+        <span id="toast-msg">Mensaje</span>
+        <span class="toast-close" onclick="cerrarToast()">✖</span>
+    </div>
+
+    <script>
+        // --- CANDADO ANTI-MIRONES ---
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault(); }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) { e.preventDefault(); }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) { e.preventDefault(); }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) { e.preventDefault(); }
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) { e.preventDefault(); }
+            if (e.ctrlKey && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) { e.preventDefault(); }
+        });
+
+        // --- FUNCIÓN DE CONFETI ---
+        function celebrate() {
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#ffd700'];
+            for (let i = 0; i < 60; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.style.position = 'fixed';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = '-10px';
+                    confetti.style.width = Math.random() * 8 + 5 + 'px';
+                    confetti.style.height = Math.random() * 12 + 8 + 'px';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                    confetti.style.pointerEvents = 'none';
+                    confetti.style.zIndex = '9999';
+                    confetti.style.animation = `fall ${Math.random() * 3 + 2}s linear`;
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 5000);
+                }, i * 40);
+            }
+        }
+
+        // --- LÓGICA DEL SIMULADOR ---
+        const taxones = document.querySelectorAll('.taxon');
+        const dropZones = document.querySelectorAll('.drop-zone');
+        const sourceContainer = document.getElementById('source-container');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+        let toastTimer;
+
+        function iluminarCaracteres(traitsStr, rowId) {
+            document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.highlight-cell').forEach(el => el.classList.remove('highlight-cell'));
+            if(rowId) document.getElementById(rowId).style.backgroundColor = '#edf2f7';
+            if (!traitsStr || traitsStr === 'none') return;
+            traitsStr.split(',').forEach(trait => {
+                const mark = document.getElementById('mark-' + trait);
+                if (mark) mark.classList.add('active');
+                document.querySelectorAll('.cell-' + trait).forEach(cell => {
+                    if(cell.parentElement.id === rowId) cell.classList.add('highlight-cell');
+                });
+            });
+        }
+
+        function apagarCaracteres() {
+            document.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.highlight-cell').forEach(el => el.classList.remove('highlight-cell'));
+            document.querySelectorAll('tr').forEach(row => row.style.backgroundColor = '');
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            clearTimeout(toastTimer); 
+            toastMsg.textContent = texto;
+            toast.className = tipo === 'error' ? 'error-bg' : 'success-bg';
+            toast.style.opacity = '1';
+            toast.style.pointerEvents = 'auto'; 
+            toastTimer = setTimeout(() => { cerrarToast(); }, 15000);
+        }
+
+        function cerrarToast() {
+            toast.style.opacity = '0';
+            setTimeout(() => { toast.style.pointerEvents = 'none'; }, 300);
+        }
+
+        taxones.forEach(taxon => {
+            taxon.addEventListener('mouseenter', (e) => iluminarCaracteres(e.target.dataset.traits, e.target.dataset.row));
+            taxon.addEventListener('mouseleave', apagarCaracteres);
+            taxon.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', e.target.id);
+                setTimeout(() => { e.target.style.opacity = '0.5'; }, 0);
+                iluminarCaracteres(e.target.dataset.traits, e.target.dataset.row);
+            });
+            taxon.addEventListener('dragend', (e) => {
+                e.target.style.opacity = '1';
+                apagarCaracteres();
+            });
+        });
+
+        dropZones.forEach(zone => {
+            zone.addEventListener('dragover', (e) => e.preventDefault());
+            zone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                if(e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.add('over');
+            });
+            zone.addEventListener('dragleave', (e) => e.currentTarget.classList.remove('over'));
+            
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const zoneTarget = e.currentTarget;
+                zoneTarget.classList.remove('over');
+                
+                const id = e.dataTransfer.getData('text/plain');
+                const draggedElement = document.getElementById(id);
+                
+                const expected = zoneTarget.getAttribute('data-expected');
+                const taxonClade = draggedElement.getAttribute('data-clade');
+                
+                let esCorrecto = (expected === 'archosauria' && taxonClade === 'archosauria') || (expected === id);
+
+                if (esCorrecto) {
+                    if (zoneTarget.children.length > 0) sourceContainer.appendChild(zoneTarget.children[0]);
+                    zoneTarget.innerHTML = '';
+                    zoneTarget.appendChild(draggedElement);
+                    zoneTarget.classList.add('correct');
+                    mostrarMensaje('¡Correcto! Has interpretado bien la presencia de los caracteres.', 'success');
+                    
+                    if(document.querySelectorAll('.drop-zone .taxon').length === 5) {
+                        setTimeout(() => {
+                            mostrarMensaje('¡Felicidades! Has completado el árbol filogenético del grupo.', 'success');
+                            celebrate(); 
+                        }, 500);
+                    }
+                } else {
+                    let pista = "Revisa los caracteres derivados de este organismo en la matriz.";
+                    const traits = draggedElement.getAttribute('data-traits');
+                    
+                    if (traits === 'none') pista = "La lamprea carece de mandíbulas, pulmones y molleja. Identifica el grupo externo que diverge primero.";
+                    if (traits === 'mandibulas') pista = "El róbalo posee mandíbulas, pero no pulmones. Busca su ramificación correcta.";
+                    if (traits === 'mandibulas,pulmones') pista = "El antílope evolucionó con pulmones, pero no presenta molleja. Observa bien los nodos intermedios.";
+                    if (traits.includes('molleja')) pista = "Este organismo posee molleja. Debe ubicarse en el clado más derivado (parte superior derecha).";
+
+                    mostrarMensaje(`Ubicación incorrecta. PISTA: ${pista}`, 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
